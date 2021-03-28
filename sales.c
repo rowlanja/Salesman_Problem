@@ -178,7 +178,6 @@ int main(int argc, char *argv[])
   int seed;
   int tour_okay, tour_okay_concur;
   struct timeval start_time, stop_time;
-  struct timeval start_time_concur, stop_time_concur;   // for find tour with openPL times
 
   long long compute_time;
 
@@ -206,12 +205,12 @@ int main(int argc, char *argv[])
   printf("Time to find tour without openMP: %lld microseconds\n", compute_time);
 
   /* ||  find tour through the cities with openPL || */
-  gettimeofday(&start_time_concur, NULL);       // udr a new start time for concur
+  gettimeofday(&start_time, NULL);       // udr a new start time for concur
   simple_find_tour_concur(cities,tourConcur,ncities); // use a new tour array
-  gettimeofday(&stop_time_concur, NULL);        // use a new stop time for concur
+  gettimeofday(&stop_time, NULL);        // use a new stop time for concur
 
-  compute_time = (stop_time_concur.tv_sec - start_time_concur.tv_sec) * 1000000L +
-    (stop_time_concur.tv_usec - start_time_concur.tv_usec);
+  compute_time = (stop_time.tv_sec - start_time.tv_sec) * 1000000L +
+    (stop_time.tv_usec - start_time.tv_usec);
   printf("Time to find tour with openMP: %lld microseconds\n", compute_time);  /* check that the tour we found is correct */
 
   tour_okay = check_tour(cities,tour,ncities);
