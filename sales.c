@@ -50,6 +50,8 @@ void simple_find_tour(const point cities[], int tour[], int ncities)
     ThisPt = ClosePt;
   }
 }
+// CODE TO EDIT //
+// TEST CODE ONE PART AT A TIME, AT TIME TO EXECUTE ABOVE THE PARALLEL INSTRUCTION
 /* this is the sample code but with openMP concurrent tools added */
 void simple_find_tour_concur(const point cities[], int tour[], int ncities)
 {
@@ -58,11 +60,23 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
   int ThisPt, ClosePt=0;
   float CloseDist;
   int endtour=0;
-//	divide for loop executions between threads
+  struct timeval start_time, stop_time;
+  long long compute_time;
+
+//  divide for loop executions between threads
+// could we make this a task???
+// could we add SIMD store instruction
+  gettimeofday(&start_time, NULL);
+  //  TIME TAKEN CURRENTLY APPROX : 14 microseconds
   #pragma omp parallel for
   for (i=0; i<ncities; i++) {
     visited[i]=0;
   }
+  gettimeofday(&stop_time, NULL);
+  compute_time = (stop_time.tv_sec - start_time.tv_sec) * 1000000L +
+    (stop_time.tv_usec - start_time.tv_usec);
+  printf("\n[*]Time for assigned visited values with openMP: %lld microseconds\n\n", compute_time);
+
   ThisPt = ncities-1;
   visited[ncities-1] = 1;
   tour[endtour++] = ncities-1;
