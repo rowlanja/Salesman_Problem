@@ -10,4 +10,4 @@
 1) scp a rowlanja@macneill.scss.tcd.ie:~/cs33014
 	where a is the compiled code
 
-
+2) for openMP use gcc –fopenmp program.c
