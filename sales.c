@@ -67,7 +67,7 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
 // could we make this a task???
 // could we add SIMD store instruction
   gettimeofday(&start_time, NULL);
-  //  TIME TAKEN CURRENTLY APPROX : 14 microseconds
+  //  TIME CURRENTLY approx 13 seconds
   #pragma omp parallel for
   for (i=0; i<ncities; i++) {
     visited[i]=0;
