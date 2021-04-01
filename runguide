@@ -1,13 +1,13 @@
-# TO CONNECT TO STOKER 
+# TO CONNECT TO STOKER
 1)  turn on VPN
 2)  open remmina
 3) or run  ssh -X username@macneill.scss.tcd.ie
 
-# TO COMPILE THE CODE
-4) gcc sales.c mytour.c -o a -lm
+# TO COMPILE THE CODE using gcc
+4) gcc -fopenmp-simd sales.c mytour.c -o a -lm
 
-# COPY COMPILED CODE 
+# COPY COMPILED CODE
 1) scp a rowlanja@macneill.scss.tcd.ie:~/cs33014
 	where a is the compiled code
 
-2) for openMP use gcc –fopenmp program.c
+2) for ggc openMP use gcc –fopenmp program.c
