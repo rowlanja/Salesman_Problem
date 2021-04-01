@@ -20,6 +20,15 @@ float dist(const point cities[], int i, int j) {
   return sqrt(sqr(cities[i].x-cities[j].x)+
 	      sqr(cities[i].y-cities[j].y));
 }
+
+float approx_dist(const point cities[], int i, int j){
+  
+  float n = (((cities[j].x - cities[j].x) * (cities[j].x - cities[j].x)) + ((cities[i].y - cities[j].y) * (cities[i].y - cities[j].y)));
+  
+  const int result = 0x1fbb4000 + (*(int*)&n >> 1);
+    return *(float*)&result; 
+}
+
 // sequential code without OpenMP
 void simple_find_tour(const point cities[], int tour[], int ncities)
 {
@@ -74,8 +83,8 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
     #pragma omp parallel for
     for (j=0; j<ncities-1; j++) {
       if (!visited[j]) {
-      	if (dist(cities, ThisPt, j) < CloseDist) {
-      	  CloseDist = dist(cities, ThisPt, j);
+      	if (approx_dist(cities, ThisPt, j) < CloseDist) {
+      	  CloseDist = approx_dist(cities, ThisPt, j);
       	  ClosePt = j;
       	}
       }
