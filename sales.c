@@ -60,12 +60,15 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
   int ThisPt, ClosePt=0;
   float CloseDist;
   int endtour=0;
+  /* ||  find tour through the cities with openPL || */
+  #pragma omp parallel for
   for (i=0; i<ncities; i++) {
     visited[i]=0;
   }
   ThisPt = ncities-1;
   visited[ncities-1] = 1;
   tour[endtour++] = ncities-1;
+  #pragma omp parallel for
   for (i=1; i<ncities; i++) {
     CloseDist = DBL_MAX;
     #pragma omp parallel for
