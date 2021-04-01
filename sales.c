@@ -83,8 +83,9 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
     #pragma omp parallel for
     for (j=0; j<ncities-1; j++) {
       if (!visited[j]) {
-      	if (approx_dist(cities, ThisPt, j) < CloseDist) {
-      	  CloseDist = approx_dist(cities, ThisPt, j);
+        float distance = approx_dist(cities, ThisPt, j);
+      	if (distance < CloseDist) {
+      	  CloseDist = distance;
       	  ClosePt = j;
       	}
       }
