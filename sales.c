@@ -8,8 +8,14 @@
 #include "mytour.h"
 #include <omp.h>
 #include <xmmintrin.h>
-
+#include <emmintrin.h>
+#include <limits.h>
 const int DEBUG = 0;
+
+typedef struct {
+  float CloseDist;
+  int ClosePt;
+} Compare;
 
 float sqr(float x)
 {
@@ -17,23 +23,25 @@ float sqr(float x)
 }
 
 float dist(const point cities[], int i, int j) {
-  return sqrt(sqr(cities[i].x-cities[j].x)+
-	      sqr(cities[i].y-cities[j].y));
+  float x =  sqr(cities[i].x-cities[j].x)+ sqr(cities[i].y-cities[j].y);
+  x = sqrt(x);
+  return x;
 }
 
 
 /*
-  Approximate distance between two points using floating point bit manupulation in 
+  Approximate distance between two points using floating point bit manupulation in
   place of square root for the solution to hypotenuse.
 
   result = sqrt( )
 
 */
+//can add lookup tables / caching
 float approx_dist(const point cities[], int i, int j){
-  
+
   float n = (((cities[i].x - cities[j].x) * (cities[i].x - cities[j].x)) + ((cities[i].y - cities[j].y) * (cities[i].y - cities[j].y)));
   const int result = 0x1fbb4000 + (*(int*)&n >> 1);
-    return *(float*)&result; 
+  return *(float*)&result;
 }
 
 // sequential code without OpenMP
@@ -56,9 +64,9 @@ void simple_find_tour(const point cities[], int tour[], int ncities)
     for (j=0; j<ncities-1; j++) {
       if (!visited[j]) {
       	if (dist(cities, ThisPt, j) < CloseDist) {
-      	  CloseDist = dist(cities, ThisPt, j);
-      	  ClosePt = j;
-      	}
+          CloseDist = dist(cities, ThisPt, j);
+          ClosePt = j;
+        }
       }
     }
     tour[endtour++] = ClosePt;
@@ -69,37 +77,45 @@ void simple_find_tour(const point cities[], int tour[], int ncities)
 // CODE TO EDIT //
 // TEST CODE ONE PART AT A TIME, AT TIME TO EXECUTE ABOVE THE PARALLEL INSTRUCTION
 /* this is the sample code but with openMP concurrent tools added */
-void simple_find_tour_concur(const point cities[], int tour[], int ncities)
-{
-  int i,j;
-  char *visited = alloca(ncities);
-  int ThisPt, ClosePt=0;
-  float CloseDist;
-  int endtour=0;
-  /* ||  find tour through the cities with openPL || */
-  #pragma omp parallel for
-  for (i=0; i<ncities; i++) {
-    visited[i]=0;
-  }
-  ThisPt = ncities-1;
-  visited[ncities-1] = 1;
-  tour[endtour++] = ncities-1;
-  #pragma omp parallel for
-  for (i=1; i<ncities; i++) {
-    CloseDist = DBL_MAX;
-    #pragma omp parallel for
-    for (j=0; j<ncities-1; j++) {
-      if (!visited[j]) {
-        float distance = approx_dist(cities, ThisPt, j);
-      	if (distance < CloseDist) {
-      	  CloseDist = distance;
-      	  ClosePt = j;
-      	}
-      }
+void simple_find_tour_concur(const point cities[], int tour[], int ncities) {
+    // Declare the variables that will be used in the program.
+    int i, j;
+    int ThisPt, ClosePt = 0;
+    float CloseDist;
+    int endTour = 0;
+    __m128i v0 = _mm_set_epi32(0, 0, 0, 0);
+    int nvisited = (sizeof(float) * ncities) + (sizeof(float) * (ncities % 4));
+    int visited[nvisited];
+    #pragma omp declare reduction(minimum : Compare :               \
+      omp_out = omp_in.CloseDist < omp_out.CloseDist ? omp_in : omp_out)        \
+      initializer(omp_priv = {INT_MAX, 0})
+
+    //#pragma omp for if(ncities>2500)
+    for (i = 0; i < nvisited; i += 4) {
+      _mm_store_si128((__m128i *) &visited[i], v0);
     }
-    tour[endtour++] = ClosePt;
-    visited[ClosePt] = 1;
-    ThisPt = ClosePt;
+
+    ThisPt = ncities-1;
+    visited[ncities-1] = 1;
+    tour[endTour++] = ncities-1;
+
+    // Determine the tour.
+    #pragma omp parallel for if(ncities>2500)
+    for (i = 1; i < ncities; i++) {
+      float costs[ncities];
+      Compare min = { .CloseDist = DBL_MAX, .ClosePt = 0};
+      #pragma omp parallel for reduction(minimum:min) if(ncities>2500)
+      for (j = 0; j < ncities -1; j++) {
+        if (!visited[j])  costs[j] = approx_dist(cities, ThisPt, j);
+        else costs[j] = DBL_MAX;
+        if (costs[j] < min.CloseDist) {
+          min.CloseDist = costs[j];
+          min.ClosePt = j;
+        }
+      }
+      tour[endTour++] = min.ClosePt;
+      visited[min.ClosePt] = 1;
+      ThisPt = min.ClosePt;
   }
 }
 
@@ -147,8 +163,8 @@ void initialize_cities(point * cities, point * cities_con, int ncities, unsigned
     point.y = ((float)(random()))/(float)(1U<<31);
     cities[i].x = point.x;
     cities[i].y = point.y;
-    // cities_con[i].x = point.x;    //making a fresh copy of the city for the concurrent path finder
-    // cities_con[i].y = point.y;    //making a fresh copy of the city for the concurrent path finder
+    cities_con[i].x = point.x;    //making a fresh copy of the city for the concurrent path finder
+    cities_con[i].y = point.y;    //making a fresh copy of the city for the concurrent path finder
   }
 }
 
@@ -158,11 +174,10 @@ int check_tour(const point *cities, int * tour, int ncities)
 
   int i;
   int result = 1;
-
   simple_find_tour(cities,tour2,ncities);
-
   for ( i = 0; i < ncities; i++ ) {
     if ( tour[i] != tour2[i] ) {
+      // printf("DIFFERENCE %d,%d,%d\n",i,tour[i],tour2[i]);
       result = 0;
     }
   }
@@ -211,7 +226,7 @@ int main(int argc, char *argv[])
 
   /* ||  find tour through the cities with openPL || */
   gettimeofday(&start_time, NULL);       // udr a new start time for concur
-  simple_find_tour_concur(cities,tourConcur,ncities); // use a new tour array
+  simple_find_tour_concur(cities_con,tourConcur,ncities); // use a new tour array
   gettimeofday(&stop_time, NULL);        // use a new stop time for concur
 
   compute_time = (stop_time.tv_sec - start_time.tv_sec) * 1000000L +
@@ -222,10 +237,18 @@ int main(int argc, char *argv[])
 
 
   tour_okay = check_tour(cities,tour,ncities);
-  tour_okay_concur = check_tour(cities,tour,ncities);
+  tour_okay_concur = check_tour(cities_con,tourConcur,ncities);
+
+  //
+  // for(int loop = 0; loop < 50; loop++){
+  //   printf("%d : %d \n", tour[loop], tourConcur[loop]);
+  // }
   if ( !tour_okay || !tour_okay_concur) {
     fprintf(stderr, "FATAL: incorrect tour in either sequential tour generation or concur tour generation\n");
     printf("%d %d\n", tour_okay, tour_okay_concur );
+  }
+  else {
+    printf("passed checks\n");
   }
 
   /* write out results */
