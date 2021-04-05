@@ -74,25 +74,22 @@ void simple_find_tour(const point cities[], int tour[], int ncities)
     ThisPt = ClosePt;
   }
 }
-// CODE TO EDIT //
-// TEST CODE ONE PART AT A TIME, AT TIME TO EXECUTE ABOVE THE PARALLEL INSTRUCTION
-/* this is the sample code but with openMP concurrent tools added */
 void simple_find_tour_concur(const point cities[], int tour[], int ncities) {
-    // Declare the variables that will be used in the program.
     int i, j;
     int ThisPt, ClosePt = 0;
     float CloseDist;
     int endTour = 0;
-    __m128i v0 = _mm_set_epi32(0, 0, 0, 0);
+    //
+    __m128i vector = _mm_set_epi32(0, 0, 0, 0);
     int nvisited = (sizeof(float) * ncities) + (sizeof(float) * (ncities % 4));
     int visited[nvisited];
     #pragma omp declare reduction(minimum : Compare :               \
       omp_out = omp_in.CloseDist < omp_out.CloseDist ? omp_in : omp_out)        \
       initializer(omp_priv = {INT_MAX, 0})
 
-    //#pragma omp for if(ncities>2500)
+    #pragma omp parallel for if(ncities>2500)
     for (i = 0; i < nvisited; i += 4) {
-      _mm_store_si128((__m128i *) &visited[i], v0);
+      _mm_store_si128((__m128i *) &visited[i], vector);
     }
 
     ThisPt = ncities-1;
@@ -100,7 +97,7 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities) {
     tour[endTour++] = ncities-1;
 
     // Determine the tour.
-    #pragma omp parallel for if(ncities>2500)
+
     for (i = 1; i < ncities; i++) {
       float costs[ncities];
       Compare min = { .CloseDist = DBL_MAX, .ClosePt = 0};
