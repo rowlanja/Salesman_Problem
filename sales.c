@@ -97,10 +97,11 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities) {
     tour[endTour++] = ncities-1;
 
     // Determine the tour.
-
+    //#pragma omp parallel for
     for (i = 1; i < ncities; i++) {
       float costs[ncities];
       Compare min = { .CloseDist = DBL_MAX, .ClosePt = 0};
+      //#pragma omp parallel for reduction(minimum:min) if(ncities>2500)
       #pragma omp parallel for reduction(minimum:min) if(ncities>2500)
       for (j = 0; j < ncities -1; j++) {
         if (!visited[j])  costs[j] = approx_dist(cities, ThisPt, j);
@@ -110,12 +111,11 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities) {
           min.ClosePt = j;
         }
       }
-      tour[endTour++] = min.ClosePt;
+      tour[i] = min.ClosePt;
       visited[min.ClosePt] = 1;
       ThisPt = min.ClosePt;
   }
 }
-
 /* write the tour out to console */
 void write_tour(int ncities, point * cities, int * tour)
 {
@@ -172,9 +172,10 @@ int check_tour(const point *cities, int * tour, int ncities)
   int i;
   int result = 1;
   simple_find_tour(cities,tour2,ncities);
+  //printf("checking\n");
   for ( i = 0; i < ncities; i++ ) {
+    //printf("%d,%d\n",tour[i],tour2[i]);
     if ( tour[i] != tour2[i] ) {
-      // printf("DIFFERENCE %d,%d,%d\n",i,tour[i],tour2[i]);
       result = 0;
     }
   }
