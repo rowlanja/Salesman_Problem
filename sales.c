@@ -26,7 +26,7 @@ float dist(const point cities[], int i, int j) {
   Approximate distance between two points using floating point bit manupulation in 
   place of square root for the solution to hypotenuse.
 
-  result = sqrt( )
+  result = sqrt( (ix-jx)^2 + (iy-jy)^2)
 
 */
 float approx_dist(const point cities[], int i, int j){
