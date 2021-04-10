@@ -116,6 +116,69 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities) {
       ThisPt = min.ClosePt;
   }
 }
+
+void simple_find_tour_concur_alt(const point cities[], int tour[], int ncities) {
+    int i, j;
+    int ThisPt, ClosePt = 0;
+    float CloseDist;
+    int endTour = 0;
+    //
+    __m128i vector = _mm_set_epi32(0, 0, 0, 0);
+    int nvisited = (sizeof(float) * ncities) + (sizeof(float) * (ncities % 4));
+    int visited[nvisited];
+    #pragma omp declare reduction(minimum : Compare :               \
+      omp_out = omp_in.CloseDist < omp_out.CloseDist ? omp_in : omp_out)        \
+      initializer(omp_priv = {INT_MAX, 0})
+
+    #pragma omp parallel for if(ncities>2500)
+    for (i = 0; i < nvisited; i += 4) {
+      _mm_store_si128((__m128i *) &visited[i], vector);
+    }
+
+    ThisPt = ncities-1;
+    visited[ncities-1] = 1;
+    tour[endTour++] = ncities-1;
+
+    // Determine the tour.
+    //#pragma omp parallel for
+    for (i = 1; i < ncities; i++) {
+      float costs[ncities];
+      int index = INT_MAX;
+      float min = DBL_MAX;
+      #pragma omp parallel
+      {
+        int index_local = INT_MAX;
+        float min_local = DBL_MAX;
+        #pragma omp for
+        for (j = 0; j < ncities -1; j++) {
+          if (!visited[j])  {
+            costs[j] = approx_dist(cities, ThisPt, j);
+          }
+          else {
+            costs[j] = DBL_MAX;
+          }
+        }
+        #pragma omp for
+        for (j = 0; j < ncities -1; j++) {
+          if (costs[j] < min_local) {
+            min_local = costs[j];
+            index_local = j;
+          }
+        }
+        #pragma omp critical
+        {
+          if(min_local < min){
+            min = min_local;
+            index = index_local;
+          }
+        }
+      }
+      tour[i] = index;
+      visited[index] = 1;
+      ThisPt = index;
+  }
+}
+
 /* write the tour out to console */
 void write_tour(int ncities, point * cities, int * tour)
 {
@@ -172,9 +235,7 @@ int check_tour(const point *cities, int * tour, int ncities)
   int i;
   int result = 1;
   simple_find_tour(cities,tour2,ncities);
-  //printf("checking\n");
   for ( i = 0; i < ncities; i++ ) {
-    //printf("%d,%d\n",tour[i],tour2[i]);
     if ( tour[i] != tour2[i] ) {
       result = 0;
     }
