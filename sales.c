@@ -71,32 +71,80 @@ void simple_find_tour(const point cities[], int tour[], int ncities)
 /* this is the sample code but with openMP concurrent tools added */
 void simple_find_tour_concur(const point cities[], int tour[], int ncities)
 {
+  int max_threads = omp_get_num_procs();
+  printf("%d\n",max_threads);
   int i,j;
-  char *visited = alloca(ncities);
+  char *visited = (char*)calloc(ncities, sizeof(char));
   int ThisPt, ClosePt=0;
   float CloseDist;
   int endtour=0;
   /* ||  find tour through the cities with openPL || */
-  #pragma omp parallel for
-  for (i=0; i<ncities; i++) {
-    visited[i]=0;
-  }
+  
   ThisPt = ncities-1;
   visited[ncities-1] = 1;
   tour[endtour++] = ncities-1;
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for (i=1; i<ncities; i++) {
     CloseDist = DBL_MAX;
-    #pragma omp parallel for
-    for (j=0; j<ncities-1; j++) {
-      if (!visited[j]) {
-        float distance = approx_dist(cities, ThisPt, j);
-      	if (distance < CloseDist) {
-      	  CloseDist = distance;
-      	  ClosePt = j;
-      	}
+    
+      for (j=0; j<ncities-1; j += 4) {
+        float * distances = calloc(4, sizeof(float));
+        distances[0] = DBL_MAX;
+        distances[1] = DBL_MAX;
+        distances[2] = DBL_MAX;
+        distances[3] = DBL_MAX;
+        
+        #pragma omp parallel sections
+          { 
+            #pragma omp section
+            {
+              if(j < ncities-1){
+                if (!visited[j]) {
+                  distances[0] = approx_dist(cities, ThisPt, j);
+                }
+              }
+            }
+            #pragma omp section
+            {
+              if(j+1 < ncities-1){
+                if (!visited[j+1]) {
+                  distances[1] = approx_dist(cities, ThisPt, j+1);
+                }
+              }
+            }
+            #pragma omp section
+            {
+              if(j+2 < ncities-1){
+                if (!visited[j+2]) {
+                  distances[2] = approx_dist(cities, ThisPt, j+2);
+                }
+              }
+            }
+            #pragma omp section
+            {
+              if(j+3 < ncities-1){
+                if (!visited[j+3]) {
+                  distances[3] = approx_dist(cities, ThisPt, j+3);
+                }
+              }
+            }
+        }
+        float min = DBL_MAX;
+        int min_index = 0;
+        for (int i = 0; i<4; i++)
+        {
+          if(min > distances[i]){
+            min_index = i;
+            min = distances[i];
+          }
+        }
+
+        if (min < CloseDist) 
+        {
+          CloseDist = min;
+          ClosePt = j+min_index;
+        }
       }
-    }
     tour[endtour++] = ClosePt;
     visited[ClosePt] = 1;
     ThisPt = ClosePt;
@@ -222,7 +270,7 @@ int main(int argc, char *argv[])
 
 
   tour_okay = check_tour(cities,tour,ncities);
-  tour_okay_concur = check_tour(cities,tour,ncities);
+  tour_okay_concur = check_tour(cities,tourConcur,ncities);
   if ( !tour_okay || !tour_okay_concur) {
     fprintf(stderr, "FATAL: incorrect tour in either sequential tour generation or concur tour generation\n");
     printf("%d %d\n", tour_okay, tour_okay_concur );
@@ -230,8 +278,9 @@ int main(int argc, char *argv[])
 
   /* write out results */
   if ( DEBUG ) {
-    write_eps_file(ncities, cities, tour);
+    //write_eps_file(ncities, cities, tour);
     write_tour(ncities, cities, tour);
+    write_tour(ncities, cities, tourConcur);
   }
 
   free(cities);
