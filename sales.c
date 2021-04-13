@@ -71,8 +71,7 @@ void simple_find_tour(const point cities[], int tour[], int ncities)
 /* this is the sample code but with openMP concurrent tools added */
 void simple_find_tour_concur(const point cities[], int tour[], int ncities)
 {
-  int max_threads = omp_get_num_procs();
-  printf("%d\n",max_threads);
+  
   int i,j;
   char *visited = (char*)calloc(ncities, sizeof(char));
   int ThisPt, ClosePt=0;
@@ -87,24 +86,40 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
   struct timeval start_time, stop_time;
   long long compute_time;
   int done = 0;
-  float * distances = calloc(4, sizeof(float));
+  float * distances = calloc(12, sizeof(float));
   
+  float costs[ncities][ncities];
+
   for (i=1; i<ncities; i++) {
     CloseDist = DBL_MAX;
     
-      for (j=0; j<ncities-1; j += 4) {
+      for (j=0; j<ncities-1; j += 12) {
         distances[0] = DBL_MAX;
         distances[1] = DBL_MAX;
         distances[2] = DBL_MAX;
         distances[3] = DBL_MAX;
-        gettimeofday(&start_time, NULL);
-        #pragma omp parallel sections
+        distances[4] = DBL_MAX;
+        distances[5] = DBL_MAX;
+        distances[6] = DBL_MAX;
+        distances[7] = DBL_MAX;
+        distances[8] = DBL_MAX;
+        distances[9] = DBL_MAX;
+        distances[10] = DBL_MAX;
+        distances[11] = DBL_MAX;
+        
+        if( i==1 && j == 0){
+          gettimeofday(&start_time, NULL);
+        }
+        #pragma omp parallel sections 
           { 
             #pragma omp section
             {
+              //int thread_id = omp_get_thread_num();
+              //printf("%d\n", thread_id);
               if(j < ncities-1){
                 if (!visited[j]) {
                   distances[0] = approx_dist(cities, ThisPt, j);
+                  
                 }
               }
             }
@@ -113,6 +128,7 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
               if(j+1 < ncities-1){
                 if (!visited[j+1]) {
                   distances[1] = approx_dist(cities, ThisPt, j+1);
+                  
                 }
               }
             }
@@ -121,6 +137,7 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
               if(j+2 < ncities-1){
                 if (!visited[j+2]) {
                   distances[2] = approx_dist(cities, ThisPt, j+2);
+                  
                 }
               }
             }
@@ -129,16 +146,89 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
               if(j+3 < ncities-1){
                 if (!visited[j+3]) {
                   distances[3] = approx_dist(cities, ThisPt, j+3);
+
+                }
+              }
+            }
+            #pragma omp section
+            {
+              if(j+4 < ncities-1){
+                if (!visited[j+4]) {
+                  distances[4] = approx_dist(cities, ThisPt, j+4);
+
+                }
+              }
+            }
+            #pragma omp section
+            {
+              if(j+5 < ncities-1){
+                if (!visited[j+5]) {
+                  distances[5] = approx_dist(cities, ThisPt, j+5);
+
+                }
+              }
+            }
+            #pragma omp section
+            {
+              if(j+6 < ncities-1){
+                if (!visited[j+6]) {
+                  distances[6] = approx_dist(cities, ThisPt, j+6);
+
+                }
+              }
+            }
+            #pragma omp section
+            {
+              if(j+7 < ncities-1){
+                if (!visited[j+7]) {
+                  distances[7] = approx_dist(cities, ThisPt, j+7);
+
+                }
+              }
+            }
+            #pragma omp section
+            {
+              if(j+8 < ncities-1){
+                if (!visited[j+8]) {
+                  distances[8] = approx_dist(cities, ThisPt, j+8);
+
+                }
+              }
+            }
+            #pragma omp section
+            {
+              if(j+9 < ncities-1){
+                if (!visited[j+9]) {
+                  distances[9] = approx_dist(cities, ThisPt, j+9);
+
+                }
+              }
+            }
+            #pragma omp section
+            {
+              if(j+10 < ncities-1){
+                if (!visited[j+10]) {
+                  distances[10] = approx_dist(cities, ThisPt, j+10);
+
+                }
+              }
+            }
+            #pragma omp section
+            {
+              if(j+11 < ncities-1){
+                if (!visited[j+11]) {
+                  distances[11] = approx_dist(cities, ThisPt, j+11);
+
                 }
               }
             }
         }
-        gettimeofday(&stop_time, NULL);
+        
         #pragma omp single
         {
           float min = DBL_MAX;
           int min_index = 0;
-          for (int i = 0; i<4; i++)
+          for (int i = 0; i<12; i++)
           {
             if(min > distances[i]){
               min_index = i;
@@ -152,6 +242,8 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
             ClosePt = j+min_index;
           }
         }
+        
+       if(i==1 && j ==0)gettimeofday(&stop_time, NULL);
       }
     tour[endtour++] = ClosePt;
     visited[ClosePt] = 1;
