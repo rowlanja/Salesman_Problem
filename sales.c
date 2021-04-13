@@ -89,7 +89,7 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
   float * distances = calloc(12, sizeof(float));
   
   float costs[ncities][ncities];
-
+  
   for (i=1; i<ncities; i++) {
     CloseDist = DBL_MAX;
     
@@ -107,21 +107,19 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
         distances[10] = DBL_MAX;
         distances[11] = DBL_MAX;
         
-        if( i==1 && j == 0){
-          gettimeofday(&start_time, NULL);
-        }
-        #pragma omp parallel sections 
+        if( i==2 && j == 0)gettimeofday(&start_time, NULL);
+        #pragma omp parallel sections firstprivate(cities, visited)
           { 
             #pragma omp section
             {
-              //int thread_id = omp_get_thread_num();
-              //printf("%d\n", thread_id);
+              
               if(j < ncities-1){
                 if (!visited[j]) {
                   distances[0] = approx_dist(cities, ThisPt, j);
                   
                 }
               }
+
             }
             #pragma omp section
             {
@@ -224,6 +222,7 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
             }
         }
         
+        if(i==2 && j ==0)gettimeofday(&stop_time, NULL);
         #pragma omp single
         {
           float min = DBL_MAX;
@@ -243,7 +242,6 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
           }
         }
         
-       if(i==1 && j ==0)gettimeofday(&stop_time, NULL);
       }
     tour[endtour++] = ClosePt;
     visited[ClosePt] = 1;
