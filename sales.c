@@ -83,12 +83,13 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
   ThisPt = ncities-1;
   visited[ncities-1] = 1;
   tour[endtour++] = ncities-1;
+
+  float * distances = calloc(4, sizeof(float));
   //#pragma omp parallel for
   for (i=1; i<ncities; i++) {
     CloseDist = DBL_MAX;
     
       for (j=0; j<ncities-1; j += 4) {
-        float * distances = calloc(4, sizeof(float));
         distances[0] = DBL_MAX;
         distances[1] = DBL_MAX;
         distances[2] = DBL_MAX;
@@ -129,20 +130,23 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
               }
             }
         }
-        float min = DBL_MAX;
-        int min_index = 0;
-        for (int i = 0; i<4; i++)
+        #pragma omp single
         {
-          if(min > distances[i]){
-            min_index = i;
-            min = distances[i];
+          float min = DBL_MAX;
+          int min_index = 0;
+          for (int i = 0; i<4; i++)
+          {
+            if(min > distances[i]){
+              min_index = i;
+              min = distances[i];
+            }
           }
-        }
 
-        if (min < CloseDist) 
-        {
-          CloseDist = min;
-          ClosePt = j+min_index;
+          if (min < CloseDist) 
+          {
+            CloseDist = min;
+            ClosePt = j+min_index;
+          }
         }
       }
     tour[endtour++] = ClosePt;
