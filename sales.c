@@ -84,8 +84,11 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
   visited[ncities-1] = 1;
   tour[endtour++] = ncities-1;
 
+  struct timeval start_time, stop_time;
+  long long compute_time;
+  int done = 0;
   float * distances = calloc(4, sizeof(float));
-  //#pragma omp parallel for
+  
   for (i=1; i<ncities; i++) {
     CloseDist = DBL_MAX;
     
@@ -94,7 +97,7 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
         distances[1] = DBL_MAX;
         distances[2] = DBL_MAX;
         distances[3] = DBL_MAX;
-        
+        gettimeofday(&start_time, NULL);
         #pragma omp parallel sections
           { 
             #pragma omp section
@@ -130,6 +133,7 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
               }
             }
         }
+        gettimeofday(&stop_time, NULL);
         #pragma omp single
         {
           float min = DBL_MAX;
@@ -153,6 +157,9 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
     visited[ClosePt] = 1;
     ThisPt = ClosePt;
   }
+  compute_time = (stop_time.tv_sec - start_time.tv_sec) * 1000000L +
+    (stop_time.tv_usec - start_time.tv_usec);
+  printf("Time to execute last parallel section: %lld microseconds\n", compute_time);
 }
 
 /* write the tour out to console */
