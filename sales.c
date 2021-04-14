@@ -86,7 +86,7 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
   float (*costs)[ncities] = malloc(sizeof(float[ncities][ncities]));
   
   int omp_toggle = 0;
-  if(ncities > 2500) omp_toggle = 1;
+  if(ncities > 2000) omp_toggle = 1;
   gettimeofday(&start_time, NULL);
   #pragma omp parallel if(omp_toggle)
   {
@@ -94,7 +94,7 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
   for(int i=0; i<ncities;i++){
         #pragma omp simd
         for(int j=0; j<ncities;j++){
-          //printf("thread id - %d\n", omp_get_thread_num());
+          if(i == 0 && j == 0)printf("thread count within parallel section on stoker - %d\n", omp_get_num_threads());
           float n = (((cities[i].x - cities[j].x) * (cities[i].x - cities[j].x)) + 
                 ((cities[i].y - cities[j].y) * (cities[i].y - cities[j].y)));
           const int result = 0x1fbb4000 + (*(int*)&n >> 1);
@@ -113,7 +113,6 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
   float cost = DBL_MAX;
 
   
-  gettimeofday(&start_time, NULL);
   for(i = 1; i< ncities; i++){
 
     for(j = 0; j <ncities; j++){
@@ -128,12 +127,11 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
     source = min_index;
     visited[min_index] = 1;
   }
-  gettimeofday(&stop_time,NULL);
-  
+  /*
   compute_time = (stop_time.tv_sec - start_time.tv_sec) * 1000000L +
     (stop_time.tv_usec - start_time.tv_usec);
-  printf("Time to calculate one iteration: %lld microseconds\n", compute_time);
-  
+  printf("Time to fill array: %lld microseconds\n", compute_time);
+  */
   free(costs);
 }
 
