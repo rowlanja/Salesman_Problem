@@ -31,7 +31,8 @@ float dist(const point cities[], int i, int j) {
 */
 float approx_dist(const point cities[], int i, int j){
   
-  float n = (((cities[i].x - cities[j].x) * (cities[i].x - cities[j].x)) + ((cities[i].y - cities[j].y) * (cities[i].y - cities[j].y)));
+  float n = (((cities[i].x - cities[j].x) * (cities[i].x - cities[j].x)) + 
+            ((cities[i].y - cities[j].y) * (cities[i].y - cities[j].y)));
   const int result = 0x1fbb4000 + (*(int*)&n >> 1);
     return *(float*)&result; 
 }
@@ -77,179 +78,63 @@ void simple_find_tour_concur(const point cities[], int tour[], int ncities)
   int ThisPt, ClosePt=0;
   float CloseDist;
   int endtour=0;
-  /* ||  find tour through the cities with openPL || */
-  
-  ThisPt = ncities-1;
-  visited[ncities-1] = 1;
-  tour[endtour++] = ncities-1;
-
   struct timeval start_time, stop_time;
   long long compute_time;
-  int done = 0;
-  float * distances = calloc(12, sizeof(float));
+
+
+  /* ||  find tour through the cities with openPL || */
+  float (*costs)[ncities] = malloc(sizeof(float[ncities][ncities]));
   
-  float costs[ncities][ncities];
-  
-  for (i=1; i<ncities; i++) {
-    CloseDist = DBL_MAX;
-    
-      for (j=0; j<ncities-1; j += 12) {
-        distances[0] = DBL_MAX;
-        distances[1] = DBL_MAX;
-        distances[2] = DBL_MAX;
-        distances[3] = DBL_MAX;
-        distances[4] = DBL_MAX;
-        distances[5] = DBL_MAX;
-        distances[6] = DBL_MAX;
-        distances[7] = DBL_MAX;
-        distances[8] = DBL_MAX;
-        distances[9] = DBL_MAX;
-        distances[10] = DBL_MAX;
-        distances[11] = DBL_MAX;
-        
-        if( i==2 && j == 0)gettimeofday(&start_time, NULL);
-        #pragma omp parallel sections firstprivate(cities, visited)
-          { 
-            #pragma omp section
-            {
-              
-              if(j < ncities-1){
-                if (!visited[j]) {
-                  distances[0] = approx_dist(cities, ThisPt, j);
-                  
-                }
-              }
-
-            }
-            #pragma omp section
-            {
-              if(j+1 < ncities-1){
-                if (!visited[j+1]) {
-                  distances[1] = approx_dist(cities, ThisPt, j+1);
-                  
-                }
-              }
-            }
-            #pragma omp section
-            {
-              if(j+2 < ncities-1){
-                if (!visited[j+2]) {
-                  distances[2] = approx_dist(cities, ThisPt, j+2);
-                  
-                }
-              }
-            }
-            #pragma omp section
-            {
-              if(j+3 < ncities-1){
-                if (!visited[j+3]) {
-                  distances[3] = approx_dist(cities, ThisPt, j+3);
-
-                }
-              }
-            }
-            #pragma omp section
-            {
-              if(j+4 < ncities-1){
-                if (!visited[j+4]) {
-                  distances[4] = approx_dist(cities, ThisPt, j+4);
-
-                }
-              }
-            }
-            #pragma omp section
-            {
-              if(j+5 < ncities-1){
-                if (!visited[j+5]) {
-                  distances[5] = approx_dist(cities, ThisPt, j+5);
-
-                }
-              }
-            }
-            #pragma omp section
-            {
-              if(j+6 < ncities-1){
-                if (!visited[j+6]) {
-                  distances[6] = approx_dist(cities, ThisPt, j+6);
-
-                }
-              }
-            }
-            #pragma omp section
-            {
-              if(j+7 < ncities-1){
-                if (!visited[j+7]) {
-                  distances[7] = approx_dist(cities, ThisPt, j+7);
-
-                }
-              }
-            }
-            #pragma omp section
-            {
-              if(j+8 < ncities-1){
-                if (!visited[j+8]) {
-                  distances[8] = approx_dist(cities, ThisPt, j+8);
-
-                }
-              }
-            }
-            #pragma omp section
-            {
-              if(j+9 < ncities-1){
-                if (!visited[j+9]) {
-                  distances[9] = approx_dist(cities, ThisPt, j+9);
-
-                }
-              }
-            }
-            #pragma omp section
-            {
-              if(j+10 < ncities-1){
-                if (!visited[j+10]) {
-                  distances[10] = approx_dist(cities, ThisPt, j+10);
-
-                }
-              }
-            }
-            #pragma omp section
-            {
-              if(j+11 < ncities-1){
-                if (!visited[j+11]) {
-                  distances[11] = approx_dist(cities, ThisPt, j+11);
-
-                }
-              }
-            }
+  int omp_toggle = 0;
+  if(ncities > 2500) omp_toggle = 1;
+  gettimeofday(&start_time, NULL);
+  #pragma omp parallel if(omp_toggle)
+  {
+  #pragma omp for
+  for(int i=0; i<ncities;i++){
+        #pragma omp simd
+        for(int j=0; j<ncities;j++){
+          //printf("thread id - %d\n", omp_get_thread_num());
+          float n = (((cities[i].x - cities[j].x) * (cities[i].x - cities[j].x)) + 
+                ((cities[i].y - cities[j].y) * (cities[i].y - cities[j].y)));
+          const int result = 0x1fbb4000 + (*(int*)&n >> 1);
+          costs[i][j] = *(float*)&result;
         }
-        
-        if(i==2 && j ==0)gettimeofday(&stop_time, NULL);
-        #pragma omp single
-        {
-          float min = DBL_MAX;
-          int min_index = 0;
-          for (int i = 0; i<12; i++)
-          {
-            if(min > distances[i]){
-              min_index = i;
-              min = distances[i];
-            }
-          }
-
-          if (min < CloseDist) 
-          {
-            CloseDist = min;
-            ClosePt = j+min_index;
-          }
-        }
-        
-      }
-    tour[endtour++] = ClosePt;
-    visited[ClosePt] = 1;
-    ThisPt = ClosePt;
   }
+  }
+  gettimeofday(&stop_time,NULL);
+  
+
+  visited[ncities-1] = 1;
+  tour[0] = ncities - 1;
+  int source = ncities - 1;
+  int min_index = 0;
+  float min_cost = DBL_MAX;
+  float cost = DBL_MAX;
+
+  
+  gettimeofday(&start_time, NULL);
+  for(i = 1; i< ncities; i++){
+
+    for(j = 0; j <ncities; j++){
+      cost = costs[source][j];
+      if(cost < min_cost && (visited[j]!= 1)){
+        min_index = j;
+        min_cost = cost;
+      }
+    }
+    min_cost = DBL_MAX;
+    tour[i] = min_index;
+    source = min_index;
+    visited[min_index] = 1;
+  }
+  gettimeofday(&stop_time,NULL);
+  
   compute_time = (stop_time.tv_sec - start_time.tv_sec) * 1000000L +
     (stop_time.tv_usec - start_time.tv_usec);
-  printf("Time to execute last parallel section: %lld microseconds\n", compute_time);
+  printf("Time to calculate one iteration: %lld microseconds\n", compute_time);
+  
+  free(costs);
 }
 
 /* write the tour out to console */

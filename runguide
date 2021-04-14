@@ -4,7 +4,7 @@
 3) or run  ssh -X username@macneill.scss.tcd.ie
 
 # TO COMPILE THE CODE using gcc
-4) gcc -fopenmp-simd sales.c mytour.c -o a -lm
+4) gcc -fopenmp -fopenmp-simd sales.c mytour.c -o a -lm -O2
 
 # COPY COMPILED CODE
 1) scp a rowlanja@macneill.scss.tcd.ie:~/cs33014
