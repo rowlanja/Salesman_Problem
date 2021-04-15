@@ -20,21 +20,16 @@ float dist(const point cities[], int i, int j) {
   return sqrt(sqr(cities[i].x-cities[j].x)+
 	      sqr(cities[i].y-cities[j].y));
 }
-
-
 /*
-  Approximate distance between two points using floating point bit manupulation in 
+  Approximate distance between two points using floating point bit manupulation in
   place of square root for the solution to hypotenuse.
-
   result = sqrt( )
-
 */
 float approx_dist(const point cities[], int i, int j){
-  
-  float n = (((cities[i].x - cities[j].x) * (cities[i].x - cities[j].x)) + 
+  float n = (((cities[i].x - cities[j].x) * (cities[i].x - cities[j].x)) +
             ((cities[i].y - cities[j].y) * (cities[i].y - cities[j].y)));
   const int result = 0x1fbb4000 + (*(int*)&n >> 1);
-    return *(float*)&result; 
+    return *(float*)&result;
 }
 
 // sequential code without OpenMP
@@ -66,73 +61,6 @@ void simple_find_tour(const point cities[], int tour[], int ncities)
     visited[ClosePt] = 1;
     ThisPt = ClosePt;
   }
-}
-// CODE TO EDIT //
-// TEST CODE ONE PART AT A TIME, AT TIME TO EXECUTE ABOVE THE PARALLEL INSTRUCTION
-/* this is the sample code but with openMP concurrent tools added */
-void simple_find_tour_concur(const point cities[], int tour[], int ncities)
-{
-  
-  int i,j;
-  char *visited = (char*)calloc(ncities, sizeof(char));
-  int ThisPt, ClosePt=0;
-  float CloseDist;
-  int endtour=0;
-  struct timeval start_time, stop_time;
-  long long compute_time;
-
-
-  /* ||  find tour through the cities with openPL || */
-  float (*costs)[ncities] = malloc(sizeof(float[ncities][ncities]));
-  
-  int omp_toggle = 0;
-  if(ncities > 2000) omp_toggle = 1;
-  gettimeofday(&start_time, NULL);
-  #pragma omp parallel if(omp_toggle)
-  {
-  #pragma omp for
-  for(int i=0; i<ncities;i++){
-        #pragma omp simd
-        for(int j=0; j<ncities;j++){
-          if(i == 0 && j == 0)printf("thread count within parallel section on stoker - %d\n", omp_get_num_threads());
-          float n = (((cities[i].x - cities[j].x) * (cities[i].x - cities[j].x)) + 
-                ((cities[i].y - cities[j].y) * (cities[i].y - cities[j].y)));
-          const int result = 0x1fbb4000 + (*(int*)&n >> 1);
-          costs[i][j] = *(float*)&result;
-        }
-  }
-  }
-  gettimeofday(&stop_time,NULL);
-  
-
-  visited[ncities-1] = 1;
-  tour[0] = ncities - 1;
-  int source = ncities - 1;
-  int min_index = 0;
-  float min_cost = DBL_MAX;
-  float cost = DBL_MAX;
-
-  
-  for(i = 1; i< ncities; i++){
-
-    for(j = 0; j <ncities; j++){
-      cost = costs[source][j];
-      if(cost < min_cost && (visited[j]!= 1)){
-        min_index = j;
-        min_cost = cost;
-      }
-    }
-    min_cost = DBL_MAX;
-    tour[i] = min_index;
-    source = min_index;
-    visited[min_index] = 1;
-  }
-  /*
-  compute_time = (stop_time.tv_sec - start_time.tv_sec) * 1000000L +
-    (stop_time.tv_usec - start_time.tv_usec);
-  printf("Time to fill array: %lld microseconds\n", compute_time);
-  */
-  free(costs);
 }
 
 /* write the tour out to console */
@@ -179,19 +107,22 @@ void initialize_cities(point * cities, point * cities_con, int ncities, unsigned
     point.y = ((float)(random()))/(float)(1U<<31);
     cities[i].x = point.x;
     cities[i].y = point.y;
-    // cities_con[i].x = point.x;    //making a fresh copy of the city for the concurrent path finder
-    // cities_con[i].y = point.y;    //making a fresh copy of the city for the concurrent path finder
   }
 }
 
 int check_tour(const point *cities, int * tour, int ncities)
 {
   int * tour2 = malloc(ncities*sizeof(int));
+  struct timeval start_time, stop_time;
+  long long compute_time;
 
   int i;
   int result = 1;
-
+  gettimeofday(&start_time, NULL);
   simple_find_tour(cities,tour2,ncities);
+  gettimeofday(&stop_time, NULL);
+  compute_time = (stop_time.tv_sec - start_time.tv_sec) * 1000000L +(stop_time.tv_usec - start_time.tv_usec);
+  printf("Time to find tour without openMP: %lld microseconds\n", compute_time);  /* check that the tour we found is correct */
 
   for ( i = 0; i < ncities; i++ ) {
     if ( tour[i] != tour2[i] ) {
@@ -229,42 +160,28 @@ int main(int argc, char *argv[])
   cities = malloc(ncities*sizeof(point));
   cities_con = malloc(ncities*sizeof(point));
   tour = malloc(ncities*sizeof(int));
-  tourConcur = malloc(ncities*sizeof(int));
   seed = 3656384L % ncities;
   initialize_cities(cities, cities_con, ncities, seed);
   gettimeofday(&start_time, NULL);
-  simple_find_tour(cities, tour, ncities);
+  my_tour(cities, tour, ncities);
   gettimeofday(&stop_time, NULL);
-
-  compute_time = (stop_time.tv_sec - start_time.tv_sec) * 1000000L +
-    (stop_time.tv_usec - start_time.tv_usec);
-  printf("Time to find tour without openMP: %lld microseconds\n", compute_time);
-
-
-  /* ||  find tour through the cities with openPL || */
-  gettimeofday(&start_time, NULL);       // udr a new start time for concur
-  simple_find_tour_concur(cities,tourConcur,ncities); // use a new tour array
-  gettimeofday(&stop_time, NULL);        // use a new stop time for concur
-
   compute_time = (stop_time.tv_sec - start_time.tv_sec) * 1000000L +
     (stop_time.tv_usec - start_time.tv_usec);
   printf("Time to find tour with openMP: %lld microseconds\n", compute_time);  /* check that the tour we found is correct */
-
   /* || find tour through the cities without openPL || */
-
-
-  tour_okay = check_tour(cities,tour,ncities);
-  tour_okay_concur = check_tour(cities,tourConcur,ncities);
-  if ( !tour_okay || !tour_okay_concur) {
+  tour_okay_concur = check_tour(cities,tour,ncities);
+  if ( !tour_okay_concur) {
     fprintf(stderr, "FATAL: incorrect tour in either sequential tour generation or concur tour generation\n");
-    printf("%d %d\n", tour_okay, tour_okay_concur );
+    printf("%d\n", tour_okay_concur );
+  }
+  else{
+    printf("Passed tests\n");
   }
 
   /* write out results */
   if ( DEBUG ) {
     //write_eps_file(ncities, cities, tour);
     write_tour(ncities, cities, tour);
-    write_tour(ncities, cities, tourConcur);
   }
 
   free(cities);
