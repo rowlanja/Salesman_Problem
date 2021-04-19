@@ -9,6 +9,12 @@
 #include <omp.h>
 #include <xmmintrin.h>
 #include <limits.h>
+
+// Vsevolod Syrtsov 18323202
+// James Rowland 18324013
+// Compile with gcc -fopenmp -fopenmp-simd sales.c mytour.c -o a -lm -O2
+
+
 void my_tour(const point cities[], int tour[], int ncities)
 {
 
